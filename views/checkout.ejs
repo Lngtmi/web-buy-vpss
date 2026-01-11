@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout - ZarVps</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+</head>
+<body>
+
+    <nav>
+        <a href="/" class="nav-logo">ZarVps.</a>
+    </nav>
+
+    <div class="page-container" style="display: flex; align-items: center; justify-content: center;">
+        <div class="checkout-box reveal">
+            <h2 style="margin-bottom: 10px;">Configuration</h2>
+            <p style="color: #888; margin-bottom: 30px;">
+                Selected: <%= plan.name %> (Rp <%= plan.price.toLocaleString() %>)
+            </p>
+
+            <div class="form-group">
+                <label>Hostname</label>
+                <input type="text" id="hostname" class="form-input" placeholder="e.g. server.domain.com" autocomplete="off">
+            </div>
+
+            <div id="step1-btn">
+                <button onclick="createOrder()" class="btn-primary" style="width: 100%; border:none; cursor: pointer;">
+                    Proceed to Payment
+                </button>
+            </div>
+
+            <div class="qr-wrapper" id="qr-area">
+                <img id="qr-img" src="" alt="QRIS">
+                <p style="font-size: 0.8rem; margin-top: 10px; color: #888;">Scan QRIS via All E-Wallet</p>
+            </div>
+
+            <div id="step2-verification" style="display: none; margin-top: 20px;">
+                <div class="cf-turnstile" data-sitekey="<%= siteKey %>" data-callback="onToken"></div>
+                <div style="height: 15px;"></div>
+                <button id="checkBtn" onclick="verifyAndDeploy()" class="btn-outline" disabled>
+                    <span class="loader" id="spinner"></span> 
+                    <span id="btnText">Confirm Payment & Deploy</span>
+                </button>
+            </div>
+
+            <form id="finishForm" action="/success" method="POST" style="display: none;">
+                <input type="hidden" name="ip" id="resIp">
+                <input type="hidden" name="password" id="resPass">
+                <input type="hidden" name="hostname" id="resHost">
+            </form>
+        </div>
+    </div>
+
+    <script src="/js/script.js"></script>
+    <script>
+        const planKey = "<%= planKey %>";
+        let orderId = "";
+        let turnstileToken = "";
+
+        function onToken(token) {
+            turnstileToken = token;
+            document.getElementById('checkBtn').removeAttribute('disabled');
+            document.getElementById('checkBtn').style.background = "#fff";
+            document.getElementById('checkBtn').style.color = "#000";
+        }
+
+        async function createOrder() {
+            const hostname = document.getElementById('hostname').value;
+            if(!hostname) return alert("Please enter a hostname.");
+
+            const btn = document.querySelector('#step1-btn button');
+            btn.innerText = "Generating QRIS...";
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/create-transaction', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ planKey })
+                });
+                const data = await res.json();
+
+                if(data.success) {
+                    orderId = data.order_id;
+                    document.getElementById('qr-img').src = data.qrUrl;
+                    document.getElementById('step1-btn').style.display = 'none';
+                    document.getElementById('qr-area').style.display = 'block';
+                    document.getElementById('step2-verification').style.display = 'block';
+                    document.getElementById('hostname').disabled = true;
+                } else {
+                    alert("Error creating transaction");
+                    btn.disabled = false;
+                    btn.innerText = "Proceed to Payment";
+                }
+            } catch(e) {
+                alert("Connection Error");
+                btn.disabled = false;
+            }
+        }
+
+        async function verifyAndDeploy() {
+            if(!turnstileToken) return;
+
+            const btnText = document.getElementById('btnText');
+            const spinner = document.getElementById('spinner');
+            const btn = document.getElementById('checkBtn');
+
+            btnText.innerText = "Verifying & Deploying...";
+            spinner.style.display = "inline-block";
+            btn.disabled = true;
+
+            const hostname = document.getElementById('hostname').value;
+
+            try {
+                const res = await fetch('/api/check-status', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        order_id: orderId,
+                        token: turnstileToken,
+                        planKey: planKey,
+                        hostname: hostname
+                    })
+                });
+                const result = await res.json();
+
+                if(result.success) {
+                    document.getElementById('resIp').value = result.data.ip;
+                    document.getElementById('resPass').value = result.data.password;
+                    document.getElementById('resHost').value = result.data.hostname;
+                    document.getElementById('finishForm').submit();
+                } else {
+                    alert("Failed: " + result.error);
+                    btnText.innerText = "Confirm Payment & Deploy";
+                    spinner.style.display = "none";
+                    btn.disabled = false;
+                    turnstile.reset();
+                }
+            } catch(e) {
+                alert("Server Error");
+                btnText.innerText = "Confirm Payment & Deploy";
+                spinner.style.display = "none";
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
