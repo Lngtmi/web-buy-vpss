@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deployed - ZarVps</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <div class="page-container">
+        <div class="success-box reveal active">
+            <i class="fas fa-check-circle" style="font-size: 5rem; color: #fff; margin-bottom: 20px;"></i>
+            <h1>Server Deployed</h1>
+            <p style="color: #888;">Your virtual machine is ready.</p>
+
+            <div class="data-table">
+                <div class="data-row">
+                    <span class="data-label">Hostname</span>
+                    <span><%= hostname %></span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">IP Address</span>
+                    <span><%= ip %></span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Username</span>
+                    <span>root</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Password</span>
+                    <span><%= password %></span>
+                </div>
+            </div>
+
+            <a href="/" class="btn-outline" style="margin-top: 30px; display: inline-block; width: auto; padding: 12px 40px;">Back to Home</a>
+        </div>
+    </div>
+
+    <script src="/js/script.js"></script>
+</body>
+</html>
